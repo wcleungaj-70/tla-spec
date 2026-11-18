@@ -2,9 +2,13 @@
 
 [返回接口目录](../README.md)
 
+本轮标有“950 交付范围”的接口按该段限定转测；表内其他历史类型范围不属于本轮承诺。裁剪参数的默认行为仍须在实现内部保持，不能连同其语义删除。
+
 <a name="api-tla-load-gm-to-l1"></a>
 
 ## tla.load_gm_to_l1
+
+**本轮 950 交付范围（TA转测）：** BF16 2D ND→4D NZ，DSA 无 params 调用。交付 params 仅 enable_nd2nz=True（默认且唯一支持值），False 必须拒绝。当前前端固定生成 nd2nz，尚无此字段，字段适配待实现。TODO：l2_cache_ctrl、enable_dn2nz 后续支持；缓存控制已有后端实现，本轮排除只是范围裁剪。旧 enable_nz2nd/enable_nz2dn 不是 enable_dn2nz；窗口行参数本轮也不开放。
 
 签名：`tla.load_gm_to_l1(src, dst, params=None)`
 
@@ -17,9 +21,8 @@
 | `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：GM<br>数据类型：<br>B8：float8e4m3fn / float8e5m2 / int8 / uint8<br>B16：int16 / uint16 / float16 / bfloat16<br>B32：int32 / uint32 / float32<br>B64：不支持 | 相同 dtype 和逻辑 tile。ND→NZ，普通模板 2D→4D。已注册的批量 3D→5D 路径不含 FP8。 | 必填 |
 | `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：L1<br>数据类型：<br>B8：float8e4m3fn / float8e5m2 / int8 / uint8<br>B16：int16 / uint16 / float16 / bfloat16<br>B32：int32 / uint32 / float32<br>B64：不支持 | 相同 dtype 和逻辑 tile。ND→NZ，普通模板 2D→4D。已注册的批量 3D→5D 路径不含 FP8。 | 必填 |
 | `params` | 控制搬运的配置 | tla.LoadGM2L1Params 或 None | None / tla.LoadGM2L1Params 实例 | None 创建默认配置。 | None |
-| `params.l2_cache_ctrl` | 原始 MTE2 缓存控制字段 | 编译期 int 或 None | None 或 −2³¹ 至 2³¹−1 | None 省略属性，硬件默认值为 0。编码域由目标决定。 | None |
-| `params.enable_nz2nd` | 预留的 NZ→ND 反向标记 | 编译期 bool | False | True 抛 NotImplementedError。 | False |
-| `params.enable_nz2dn` | 预留的 NZ→DN 反向标记 | 编译期 bool | False | True 抛 NotImplementedError。 | False |
+
+| `params.enable_nd2nz` | 启用 ND→NZ | 编译期 bool | True | 新交付字段待实现；False 必须拒绝。 | True |
 
 **调用示例**
 
@@ -100,6 +103,8 @@ def example(src_ub, y):
 
 ## tla.copy_l1_to_l0
 
+**本轮 950 交付范围（NPU IR 内部转测）：** 同类型 FP16/BF16、4D 物理 tile，L0A/L0B 分别验证，保留 is_transpose 及六个必填分块字段。先用整 K 或等长无尾块：k_part=k_part_ceil=k_part_actual 为 16 的正整数倍，K 整除 k_part，k_part_loop=K/k_part，0<=k_part_idx<k_part_loop，m 为对应 M/N 的 16 倍数且不越界。满足模板的 512B 地址对齐、fractal 对齐 offset 和容量限制。删除 actual_batch；TODO：尾块、其他类型和 batch 另行验证。同步及 L0 生命周期由调用方保证。
+
 签名：`tla.copy_l1_to_l0(src, dst, params=None)`
 
 返回：None。
@@ -112,7 +117,6 @@ def example(src_ub, y):
 | `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：L0A / L0B<br>数据类型：待确认目标支持集合 | L12L0Op 校验地址空间并要求 6 个 i64 属性，ODS 未枚举元素类型。 | 必填 |
 | `params` | 控制搬运的配置 | tla.CopyL1ToL0Params 或 None | 有效调用须提供字段完整的 tla.CopyL1ToL0Params | 省略时创建的默认配置缺少硬件分块字段，会报错。 | None |
 | `params.is_transpose` | 开启 L1 至 L0 搬运的转置形式 | 编译期 bool | False / True | 该模式仍受目标和布局约束。 | False |
-| `params.actual_batch` | 原表中的真实 batch 数 | 编译期 int 或 None | None | 非 None 抛 NotImplementedError。 | None |
 | `params.k_part_idx` | 当前 K 分段编号 | 编译期 int | 编译期整数；硬件有效范围待确认 | 调用时必填。作为分段编号须与分区方案一致。 | None |
 | `params.k_part` | K 分区长度 | 编译期 int | 编译期整数；硬件有效范围待确认 | 调用时必填。长度及单位按 L12L0 分块协议。 | None |
 | `params.k_part_ceil` | 对齐后 K 分区长度 | 编译期 int | 编译期整数；硬件有效范围待确认 | 调用时必填。与 k_part 和物理 tile 一致。 | None |
@@ -128,6 +132,8 @@ def example(src_ub, y):
 
 ## tla.make_partition_view
 
+**本轮不需要。** 缺少同名可执行入口和完整 lowering。保留规格供追溯。
+
 **提案。** 当前源码未找到对应入口；签名和目标约束待评审。
 
 原始提案：`make_partition_view( base: tla.buffer (ptr), shape: list[int], strides: list[int], tile_shape: list[int], dim_map: list[int], padding_value: enum<zero,nan,inf,-inf> )-> tla.tensor_view`
@@ -135,6 +141,8 @@ def example(src_ub, y):
 <a name="api-tla-make-strided-view"></a>
 
 ## tla.make_strided_view
+
+**本轮不需要。** 缺少同名可执行入口和完整 lowering。保留规格供追溯。
 
 **提案。** 当前源码未找到对应入口；签名和目标约束待评审。
 
@@ -144,6 +152,8 @@ def example(src_ub, y):
 
 ## tla.make_gather_scatter_view
 
+**本轮不需要。** 缺少同名可执行入口和完整 lowering。保留规格供追溯。
+
 **提案。** 当前源码未找到对应入口；签名和目标约束待评审。
 
 原始提案：`make_gather_scatter_view( base: tla.buffer (ptr), shape: list[int], strides: list[int], tile_shape: list[int], sparse_dim: list[int], padding_value: enum<zero,nan,inf,-inf> )-> tla.tensor_view`
@@ -151,6 +161,8 @@ def example(src_ub, y):
 <a name="api-tla-load-view"></a>
 
 ## tla.load_view
+
+**本轮不需要。** 缺少同名可执行入口和完整 lowering。保留规格供追溯。
 
 **提案。** 当前源码未找到对应入口；签名和目标约束待评审。
 
@@ -160,6 +172,8 @@ def example(src_ub, y):
 
 ## tla.store_view
 
+**本轮不需要。** 缺少同名可执行入口和完整 lowering。保留规格供追溯。
+
 **提案。** 当前源码未找到对应入口；签名和目标约束待评审。
 
 原始提案：`store_view( src: tla.buffer, dst: tla.tensor_view, tile: list[list[int]] ) 只用于vector kernel`
@@ -168,6 +182,8 @@ def example(src_ub, y):
 
 ## tla.set_pad_value
 
+**本轮不需要。** 缺少同名可执行入口和完整 lowering。保留规格供追溯。
+
 **提案。** 当前源码未找到对应入口；签名和目标约束待评审。
 
 原始提案：`set_pad_value()`
@@ -175,6 +191,8 @@ def example(src_ub, y):
 <a name="api-tla-set-post-copy"></a>
 
 ## tla.set_post_copy
+
+**本轮不需要。** 缺少同名可执行入口和完整 lowering。保留规格供追溯。
 
 **提案。** 当前源码未找到对应入口；签名和目标约束待评审。
 

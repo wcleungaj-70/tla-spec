@@ -2,6 +2,8 @@
 
 [返回接口目录](../README.md)
 
+本轮标有“950 交付范围”的接口按该段限定转测；表内其他历史类型范围不属于本轮承诺。裁剪参数的默认行为仍须在实现内部保持，不能连同其语义删除。
+
 <a name="api-tla-alloc"></a>
 
 ## tla.alloc
@@ -115,6 +117,8 @@ def example(x_ub, y):
 <a name="api-tla-fill"></a>
 
 ## tla.fill
+
+**本轮 950 交付范围（NPU IR 内部转测）：** 仅 UB、连续 row-major、offset=0 的 FP32/BF16/INT32（alloc 或合法 reshape）。标量 value 按前端转换规则；排除 bool/i1、向量 value、其他地址空间及带步长/非零偏移 subview。INT32 禁止浮点 value 并检查常量范围。lowering 为标量 hivm.hir.vbrc，参考 memory/fill.py、fill_frontend_contract.py。
 
 签名：`tla.fill(dst, value)`
 

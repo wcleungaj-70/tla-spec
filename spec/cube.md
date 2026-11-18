@@ -2,11 +2,15 @@
 
 [返回接口目录](../README.md)
 
+本轮标有“950 交付范围”的接口按该段限定转测；表内其他历史类型范围不属于本轮承诺。裁剪参数的默认行为仍须在实现内部保持，不能连同其语义删除。
+
 <a name="api-tla-copy-ub-to-l1"></a>
 
 ## tla.copy_ub_to_l1
 
-签名：`tla.copy_ub_to_l1(src, dst, params=None)`
+**本轮 950 交付范围（TA转测）：** BF16 UB→L1；保持已准备的物理布局，保留 DSA 使用的带步长 UB 子视图及带偏移 L1 子视图。交付仅 src/dst，TODO：pad_mode、pad_value、collapse_reassociation 后续支持。当前前端仍接收 params，签名裁剪待实现。跨核交接须显式同步。
+
+交付签名（待前端适配）：`tla.copy_ub_to_l1(src, dst)`
 
 返回：None。
 
@@ -16,10 +20,6 @@
 | --- | --- | --- | --- | --- | --- |
 | `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：UB<br>数据类型：<br>B8：float8e4m3fn / float8e5m2 / int8 / uint8<br>B16：int16 / uint16 / float16 / bfloat16<br>B32：int32 / uint32 / float32 | 见共同约束。 | 必填 |
 | `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：L1<br>数据类型：与 src 相同 | 见共同约束。 | 必填 |
-| `params` | 控制搬运的配置 | tla.CopyUB2L1Params 或 None | None / tla.CopyUB2L1Params 实例 | None 创建默认配置。 | None |
-| `params.pad_mode` | 选择填充模式 | 编译期 tla.PadMode 或 None | None | CopyOp 可携带此项，当前 UB→L1 RegBase copy 模板不消费该项。 | None |
-| `params.pad_value` | 填充时写入的标量 | int / float / 标量 tl.tensor / None | None | CopyOp 可携带此项，当前 UB→L1 RegBase copy 模板不消费该项。 | None |
-| `params.collapse_reassociation` | 指定连续逻辑轴的合并关系 | 编译期 tuple[tuple[int, ...], ...] 或 None | None 或轴索引分组。索引从 0 到原秩−1 | 分组按轴序组织，覆盖参与变形的维度，不重复。 | None |
 
 共同约束：此接口在前端固定为 UB→L1，降低为 hivm.hir.copy。RegBase UB→L1 模板注册的元素类型比通用 CopyOp 窄。默认配置要求源和目的形状相容。目标末维连续，调用前应准备相容的物理布局。Vector 生产的数据跨核供 Cube 消费时需要显式同步。
 
@@ -42,6 +42,8 @@ def load_tile_to_l1(x):
 <a name="api-tla-copy-l1-to-ub"></a>
 
 ## tla.copy_l1_to_ub
+
+**本轮 950 交付范围（NPU IR 内部转测）：** 同类型 FP16/BF16，4D NZ→2D ND，默认空配置。保留 dma/copy.py、dma/nd2nz.py、dma/nd2nz_window.py 的基础路径；其他类型和批量 5D 路径暂不纳入。AIV 读取前须同步并匹配接收子块。
 
 签名：`tla.copy_l1_to_ub(src, dst, params=None)`
 
@@ -72,6 +74,8 @@ def example(src_l1, dst_ub):
 
 ## tla.copy_l1_to_bt
 
+**本轮 950 交付范围（NPU IR 内部转测）：** A5 已有 lowering 和模板，限定 FP16/BF16/FP32→FP32 或 INT32→INT32；n 是常量 1..1024，None 仅在源末维为合法常量时可用。rank 1..4，前导维为 1，末维 stride=1，静态正 strides/offset；容量至少 roundUp(n,16) 个元素，L1 32B/BT 64B 地址对齐且不越界。内部测试使用合法 BT 地址，不承诺 tla.alloc 支持 BT。动态 n、任意二维矩阵、FP16→FP16 BT 不纳入。旧 copy.py 只有 IR 构造证据。
+
 签名：`tla.copy_l1_to_bt(src, dst, params=None)`
 
 返回：None。
@@ -80,18 +84,20 @@ def example(src_l1, dst_ub):
 
 | 参数名 | 参数含义 | 参数类型 | 合法参数范围 | 其他约束 | 默认值 |
 | --- | --- | --- | --- | --- | --- |
-| `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：L1<br>数据类型：待确认目标支持集合 | L12BTOp 校验地址空间，ODS 未枚举元素类型。偏置格式与目标实现有关。 | 必填 |
-| `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：BT<br>数据类型：待确认目标支持集合 | L12BTOp 校验地址空间，ODS 未枚举元素类型。偏置格式与目标实现有关。 | 必填 |
+| `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：L1<br>数据类型：见本轮 950 交付范围 | L12BTOp 校验地址空间，ODS 未枚举元素类型。偏置格式与目标实现有关。 | 必填 |
+| `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：BT<br>数据类型：见本轮 950 交付范围 | L12BTOp 校验地址空间，ODS 未枚举元素类型。偏置格式与目标实现有关。 | 必填 |
 | `params` | 控制搬运的配置 | tla.CopyL12BTParams 或 None | None / tla.CopyL12BTParams 实例 | None 创建默认配置。 | None |
-| `params.n` | 传给 L12BTOp 的 N 轴长度 | int / 标量整数 tl.tensor / None | None 或正整数 | None 使用 src.shape[-1]。实际读取不能越界。 | None |
+| `params.n` | 传给 L12BTOp 的 N 轴长度 | 编译期 int / None | None 或编译期常量 1..1024 | None 使用 src.shape[-1]。实际读取不能越界。 | None |
 
-共同约束：L12BTOp 的 verifier 约束源为 L1、目的为 BiasBUF。TableGen 未枚举元素类型，小测试中的 FP16/FP32 只能作为构造 IR 的用例。
+共同约束：源为 L1、目的为 BiasBUF。当前 A5 lowering 和模板按上述交付范围校验；旧小测试中的 FP16/FP32 仅是 IR 构造用例。
 
 仓库 IR 构造用例：[tla_ut/dma/copy.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/unittest/tla_ut/dma/copy.py#L45)。
 
 <a name="api-tla-copy-l1-to-fb"></a>
 
 ## tla.copy_l1_to_fb
+
+**本轮不需要。** 入口直接抛出 NotImplementedError。保留规格供追溯。
 
 签名：`tla.copy_l1_to_fb(src, dst, params=None)`
 
@@ -107,6 +113,8 @@ def example(src_l1, dst_ub):
 
 ## tla.copy_l0c_to_ub
 
+**本轮 950 交付范围（TA转测）：** 仅 FP32→FP32，dma_mode=NZ2ND、dual_dst_mode=ROW_SPLIT、sub_block_idx=None。其他字段固定默认：NO_QUANT、NO_RELU、quant_scale=None、unit_flag_ctrl/group_id=None；属性缺省不等于 DISABLED。TODO：其他布局、量化、激活、缩放、切分和手动 UnitFlag 另行验证。
+
 签名：`tla.copy_l0c_to_ub(src, dst, params=None)`
 
 返回：None。
@@ -115,34 +123,34 @@ def example(src_l1, dst_ub):
 
 | 参数名 | 参数含义 | 参数类型 | 合法参数范围 | 其他约束 | 默认值 |
 | --- | --- | --- | --- | --- | --- |
-| `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：L0C<br>数据类型：<br>B8：不支持<br>B16：不支持<br>B32：int32 / float32<br>B64：不支持 | Ascend950/960 的 UB 目标。双目标时 sub_block_idx 必须为 None。 源/目的组合见 params.pre_quant。 | 必填 |
-| `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：UB<br>数据类型：<br>B8：int8<br>B16：float16 / bfloat16<br>B32：int32 / float32<br>B64：不支持 | Ascend950/960 的 UB 目标。双目标时 sub_block_idx 必须为 None。 源/目的组合见 params.pre_quant。 | 必填 |
+| `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：L0C；float32 | 只按本轮组合转测。 | 必填 |
+| `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：UB；float32 | 与所选布局和转换匹配。 | 必填 |
 | `params` | 控制搬运的配置 | tla.FixpipeL0C2UBParams 或 None | None / tla.FixpipeL0C2UBParams 实例 | None 创建默认配置。 | None |
-| `params.dma_mode` | 选择输出布局 | 编译期 tla.FixpipeDMAMode | NZ2NZ / NZ2ND / NZ2DN | NZ2DN 需要 dav-c310 或 dav-920r1。 | FixpipeDMAMode.NZ2NZ |
-| `params.dual_dst_mode` | 选择单目标或双 AIV 子块的切分方式 | 编译期 tla.FixpipeDualDstMode | NO_DUAL / ROW_SPLIT / COLUMN_SPLIT | 双目标仅在支持的 L0C→UB 路径上使用。 | FixpipeDualDstMode.NO_DUAL |
-| `params.sub_block_idx` | 选择单目标 AIV 子块 | 编译期 tla.FixpipeSubBlock 或 None | None / SUB_BLOCK_0 / SUB_BLOCK_1 | ROW_SPLIT 或 COLUMN_SPLIT 时必须为 None。 | FixpipeSubBlock.SUB_BLOCK_0 |
-| `params.pre_quant` | 选择写出时的类型转换 | 编译期 tla.FixpipePreQuantMode | NO_QUANT：float32→float32 / int32→int32<br>F322F16：float32→float16<br>F322BF16：float32→bfloat16<br>S322I8：int32→int8<br>QF322F32_PRE：float32→float32 | src/dst 必须匹配所选转换。 | FixpipePreQuantMode.NO_QUANT |
-| `params.pre_relu` | 选择写出前的激活 | 编译期 tla.FixpipePreReluMode | NO_RELU / NORMAL_RELU（通用选项） | 前端还暴露 LEAKY_RELU / P_RELU。具体目标和参数组合需单独核验。 | FixpipePreReluMode.NO_RELU |
-| `params.quant_scale` | 提供量化或缩放系数 | int / float / 标量 tl.tensor / None | None 或可转为 float32 的标量 | 具体模式决定是否消费该操作数。 | None |
-| `params.unit_flag_ctrl` | 选择累加器 UnitFlag 的控制方式 | 编译期 tla.UnitFlagMode / int / None | None / 0（DISABLED）/ 2（ENABLED_WITHOUT_UPDATE）/ 3（ENABLED_WITH_UPDATE） | 1 保留。None 省略属性。手动模式可用 unit_flag=False 关闭自动推断。 | None |
-| `params.unit_flag_group_id` | 指定配对操作的 UnitFlag 组号 | 编译期 int 或 None | None 或 −2⁶³ 至 2⁶³−1（IR 编码） | 与生产者及消费者协议一致。编码域不代表芯片可用 ID 集。 | None |
+| `params.dma_mode` | 选择输出布局 | 编译期 tla.FixpipeDMAMode | NZ2ND | 本轮固定此模式，调用时显式指定。 | FixpipeDMAMode.NZ2NZ |
+| `params.dual_dst_mode` | 选择单目标或双 AIV 子块的切分方式 | 编译期 tla.FixpipeDualDstMode | ROW_SPLIT | 本轮固定行切分。 | FixpipeDualDstMode.NO_DUAL |
+| `params.sub_block_idx` | 选择单目标 AIV 子块 | 编译期 tla.FixpipeSubBlock 或 None | None | ROW_SPLIT 必须显式 None。 | FixpipeSubBlock.SUB_BLOCK_0 |
 
 **调用示例**
 
-示例使用默认 NZ→NZ 和 NO_QUANT。
+示例使用 DSA 的 FP32 行切分组合。
 
 ```python
 @tla.jit
 def example(acc_l0c, dst_ub):
     with tla.scope.cube():
-        tla.copy_l0c_to_ub(acc_l0c, dst_ub, tla.FixpipeL0C2UBParams())
+        tla.copy_l0c_to_ub(acc_l0c, dst_ub, tla.FixpipeL0C2UBParams(
+            dma_mode=tla.FixpipeDMAMode.NZ2ND,
+            dual_dst_mode=tla.FixpipeDualDstMode.ROW_SPLIT, sub_block_idx=None))
 ```
 
 仓库测试：[tla_ut/cube/gemm_bias.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/unittest/tla_ut/cube/gemm_bias.py#L35)。
 
+
 <a name="api-tla-copy-l0c-to-l1"></a>
 
 ## tla.copy_l0c_to_l1
+
+**本轮 950 交付范围（NPU IR 内部转测）：** 仅 FP32→FP16、NZ2NZ、F322F16；固定 NO_RELU、quant_scale=None、channel_split=False、c0_pad_en=True、unit_flag_ctrl/group_id=None。对应 dma/fixpipe.py 的 l1_nz。TODO：其他类型、布局、channel_split、关闭 C0 padding、激活和手动 UnitFlag 不纳入本轮。
 
 签名：`tla.copy_l0c_to_l1(src, dst, params=None)`
 
@@ -152,17 +160,11 @@ def example(acc_l0c, dst_ub):
 
 | 参数名 | 参数含义 | 参数类型 | 合法参数范围 | 其他约束 | 默认值 |
 | --- | --- | --- | --- | --- | --- |
-| `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：L0C<br>数据类型：<br>B8：不支持<br>B16：不支持<br>B32：int32 / float32<br>B64：不支持 | channel_split 为 True 时需要 Ascend950/960。 源/目的组合见 params.pre_quant。 | 必填 |
-| `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：L1<br>数据类型：<br>B8：int8<br>B16：float16 / bfloat16<br>B32：int32 / float32<br>B64：不支持 | channel_split 为 True 时需要 Ascend950/960。 源/目的组合见 params.pre_quant。 | 必填 |
+| `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：L0C；float32 | 只按本轮组合转测。 | 必填 |
+| `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：L1；float16 | 与所选布局和转换匹配。 | 必填 |
 | `params` | 控制搬运的配置 | tla.FixpipeL0C2L1Params 或 None | None / tla.FixpipeL0C2L1Params 实例 | None 创建默认配置。 | None |
-| `params.dma_mode` | 选择输出布局 | 编译期 tla.FixpipeDMAMode | NZ2NZ / NZ2ND / NZ2DN | NZ2DN 需要 dav-c310 或 dav-920r1。 | FixpipeDMAMode.NZ2NZ |
-| `params.pre_quant` | 选择写出时的类型转换 | 编译期 tla.FixpipePreQuantMode | NO_QUANT：float32→float32 / int32→int32<br>F322F16：float32→float16<br>F322BF16：float32→bfloat16<br>S322I8：int32→int8<br>QF322F32_PRE：float32→float32 | src/dst 必须匹配所选转换。 | FixpipePreQuantMode.NO_QUANT |
-| `params.pre_relu` | 选择写出前的激活 | 编译期 tla.FixpipePreReluMode | NO_RELU / NORMAL_RELU（通用选项） | 前端还暴露 LEAKY_RELU / P_RELU。具体目标和参数组合需单独核验。 | FixpipePreReluMode.NO_RELU |
-| `params.channel_split` | 启用目标 L1 的通道切分 | 编译期 bool | False / True | True 需要 Ascend950/960。 | False |
-| `params.c0_pad_en` | 允许 L1 目的布局的 C0 填充 | 编译期 bool | False / True | 根据目的 tile 和布局使用。 | True |
-| `params.unit_flag_ctrl` | 选择累加器 UnitFlag 的控制方式 | 编译期 tla.UnitFlagMode / int / None | None / 0（DISABLED）/ 2（ENABLED_WITHOUT_UPDATE）/ 3（ENABLED_WITH_UPDATE） | 1 保留。None 省略属性。手动模式可用 unit_flag=False 关闭自动推断。 | None |
-| `params.unit_flag_group_id` | 指定配对操作的 UnitFlag 组号 | 编译期 int 或 None | None 或 −2⁶³ 至 2⁶³−1（IR 编码） | 与生产者及消费者协议一致。编码域不代表芯片可用 ID 集。 | None |
-| `params.quant_scale` | 提供量化或缩放系数 | int / float / 标量 tl.tensor / None | None 或可转为 float32 的标量 | 具体模式决定是否消费该操作数。 | None |
+| `params.dma_mode` | 选择输出布局 | 编译期 tla.FixpipeDMAMode | NZ2NZ | 本轮固定此模式，调用时显式指定。 | FixpipeDMAMode.NZ2NZ |
+| `params.pre_quant` | 选择写出时的类型转换 | 编译期 tla.FixpipePreQuantMode | F322F16 | 依次匹配 FP32 / FP16 / BF16 输出；L1 本轮仅 FP16。 | FixpipePreQuantMode.NO_QUANT |
 
 **调用示例**
 
@@ -172,14 +174,18 @@ def example(acc_l0c, dst_ub):
 @tla.jit
 def example(acc_l0c, dst_l1):
     with tla.scope.cube():
-        tla.copy_l0c_to_l1(acc_l0c, dst_l1)
+        tla.copy_l0c_to_l1(acc_l0c, dst_l1, tla.FixpipeL0C2L1Params(
+            pre_quant=tla.FixpipePreQuantMode.F322F16))
 ```
 
 仓库测试：[tla_ut/dma/fixpipe.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/unittest/tla_ut/dma/fixpipe.py#L69)。
 
+
 <a name="api-tla-store-l0c-to-gm"></a>
 
 ## tla.store_l0c_to_gm
+
+**本轮 950 交付范围（NPU IR 内部转测）：** NZ2ND，FP32→FP32/FP16/BF16 分别使用 NO_QUANT/F322F16/F322BF16；固定 NO_RELU、quant_scale=None、unit_flag_ctrl/group_id=None。对应 dma/fixpipe.py 的 gm_fp32/gm_fp16/gm_bf16。TODO：其他布局、INT32、缩放、激活和手动 UnitFlag 不纳入本轮。
 
 签名：`tla.store_l0c_to_gm(src, dst, params=None)`
 
@@ -189,28 +195,26 @@ def example(acc_l0c, dst_l1):
 
 | 参数名 | 参数含义 | 参数类型 | 合法参数范围 | 其他约束 | 默认值 |
 | --- | --- | --- | --- | --- | --- |
-| `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：L0C<br>数据类型：<br>B8：不支持<br>B16：不支持<br>B32：int32 / float32<br>B64：不支持 | 由 dma_mode 决定输出布局。 源/目的组合见 params.pre_quant。 | 必填 |
-| `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：GM<br>数据类型：<br>B8：int8<br>B16：float16 / bfloat16<br>B32：int32 / float32<br>B64：不支持 | 由 dma_mode 决定输出布局。 源/目的组合见 params.pre_quant。 | 必填 |
+| `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：L0C；float32 | 只按本轮组合转测。 | 必填 |
+| `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：GM；float32 / float16 / bfloat16 | 与所选布局和转换匹配。 | 必填 |
 | `params` | 控制搬运的配置 | tla.FixpipeL0C2GMParams 或 None | None / tla.FixpipeL0C2GMParams 实例 | None 创建默认配置。 | None |
-| `params.dma_mode` | 选择输出布局 | 编译期 tla.FixpipeDMAMode | NZ2NZ / NZ2ND / NZ2DN | NZ2DN 需要 dav-c310 或 dav-920r1。 | FixpipeDMAMode.NZ2NZ |
-| `params.pre_quant` | 选择写出时的类型转换 | 编译期 tla.FixpipePreQuantMode | NO_QUANT：float32→float32 / int32→int32<br>F322F16：float32→float16<br>F322BF16：float32→bfloat16<br>S322I8：int32→int8<br>QF322F32_PRE：float32→float32 | src/dst 必须匹配所选转换。 | FixpipePreQuantMode.NO_QUANT |
-| `params.pre_relu` | 选择写出前的激活 | 编译期 tla.FixpipePreReluMode | NO_RELU / NORMAL_RELU（通用选项） | 前端还暴露 LEAKY_RELU / P_RELU。具体目标和参数组合需单独核验。 | FixpipePreReluMode.NO_RELU |
-| `params.quant_scale` | 提供量化或缩放系数 | int / float / 标量 tl.tensor / None | None 或可转为 float32 的标量 | 具体模式决定是否消费该操作数。 | None |
-| `params.unit_flag_ctrl` | 选择累加器 UnitFlag 的控制方式 | 编译期 tla.UnitFlagMode / int / None | None / 0（DISABLED）/ 2（ENABLED_WITHOUT_UPDATE）/ 3（ENABLED_WITH_UPDATE） | 1 保留。None 省略属性。手动模式可用 unit_flag=False 关闭自动推断。 | None |
-| `params.unit_flag_group_id` | 指定配对操作的 UnitFlag 组号 | 编译期 int 或 None | None 或 −2⁶³ 至 2⁶³−1（IR 编码） | 与生产者及消费者协议一致。编码域不代表芯片可用 ID 集。 | None |
+| `params.dma_mode` | 选择输出布局 | 编译期 tla.FixpipeDMAMode | NZ2ND | 本轮固定此模式，调用时显式指定。 | FixpipeDMAMode.NZ2NZ |
+| `params.pre_quant` | 选择写出时的类型转换 | 编译期 tla.FixpipePreQuantMode | NO_QUANT / F322F16 / F322BF16 | 依次匹配 FP32 / FP16 / BF16 输出；L1 本轮仅 FP16。 | FixpipePreQuantMode.NO_QUANT |
 
 **调用示例**
 
-dst_gm 是已构造的 GM 缓冲区，形状与默认 NZ→NZ 模式相容。
+dst_gm 是已构造的 GM 缓冲区，形状与 NZ→ND 模式相容。
 
 ```python
 @tla.jit
 def example(acc_l0c, dst_gm):
     with tla.scope.cube():
-        tla.store_l0c_to_gm(acc_l0c, dst_gm)
+        tla.store_l0c_to_gm(acc_l0c, dst_gm, tla.FixpipeL0C2GMParams(
+            dma_mode=tla.FixpipeDMAMode.NZ2ND))
 ```
 
 仓库测试：[tla_ut/cube/allocation.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/unittest/tla_ut/cube/allocation.py#L47)。
+
 
 <a name="api-tla-cube-mmad-mx"></a>
 
