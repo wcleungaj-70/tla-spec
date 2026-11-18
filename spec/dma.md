@@ -6,7 +6,7 @@
 
 ## tla.load_gm_to_l1
 
-签名：`tla.load_gm_to_l1(src, dst, params=None)`
+本轮交付签名：`tla.load_gm_to_l1(src, dst, params=None)`
 
 返回：None。
 
@@ -16,10 +16,12 @@
 | --- | --- | --- | --- | --- | --- |
 | `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：GM<br>数据类型：<br>B8：float8e4m3fn / float8e5m2 / int8 / uint8<br>B16：int16 / uint16 / float16 / bfloat16<br>B32：int32 / uint32 / float32<br>B64：不支持 | 相同 dtype 和逻辑 tile。ND→NZ，普通模板 2D→4D。已注册的批量 3D→5D 路径不含 FP8。 | 必填 |
 | `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：L1<br>数据类型：<br>B8：float8e4m3fn / float8e5m2 / int8 / uint8<br>B16：int16 / uint16 / float16 / bfloat16<br>B32：int32 / uint32 / float32<br>B64：不支持 | 相同 dtype 和逻辑 tile。ND→NZ，普通模板 2D→4D。已注册的批量 3D→5D 路径不含 FP8。 | 必填 |
-| `params` | 控制搬运的配置 | tla.LoadGM2L1Params 或 None | None / tla.LoadGM2L1Params 实例 | None 创建默认配置。 | None |
-| `params.l2_cache_ctrl` | 原始 MTE2 缓存控制字段 | 编译期 int 或 None | None 或 −2³¹ 至 2³¹−1 | None 省略属性，硬件默认值为 0。编码域由目标决定。 | None |
-| `params.enable_nz2nd` | 预留的 NZ→ND 反向标记 | 编译期 bool | False | True 抛 NotImplementedError。 | False |
-| `params.enable_nz2dn` | 预留的 NZ→DN 反向标记 | 编译期 bool | False | True 抛 NotImplementedError。 | False |
+| `params` | 控制 ND→NZ 转换的配置 | tla.LoadGM2L1Params 或 None | None / 仅含 enable_nd2nz 的配置 | None 等价于 enable_nd2nz=True。 | None |
+| `params.enable_nd2nz` | 启用 GM ND→L1 NZ 转换 | 编译期 bool | 本轮仅支持 True | False 的无转换路径未纳入本轮支持，须明确报错；当前源码尚未定义此字段，交付实现需新增。 | True |
+
+**本轮范围：** `params` 只保留 `enable_nd2nz`。现有实现固定生成 `hivm.hir.nd2nz`，并没有可切换的 `enable_nd2nz` 字段；本轮将既有转换行为显式化，不宣称已支持关闭转换。
+
+**TODO：** 后续支持 `l2_cache_ctrl` 和 `enable_dn2nz`。前者当前已有实现和专用测试，但本轮不交付；后者尚未确认直接映射，不能与 NZ→DN 反向转换混淆。支持度和实现差异见 [DMA-001](../tracking/dma.md#dma-001)。
 
 **调用示例**
 
@@ -32,7 +34,7 @@ def example(x, dst_l1):
         tla.load_gm_to_l1(tla.view(x, (16, 16)), dst_l1)
 ```
 
-仓库测试：[tla_ut/dma/nd2nz.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/unittest/tla_ut/dma/nd2nz.py#L22)。
+现有 ND→NZ 功能测试（不代表新增配置字段已验证）：[tla_ut/dma/nd2nz.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/unittest/tla_ut/dma/nd2nz.py#L22)。
 
 <a name="api-tla-load-gm-to-ub"></a>
 

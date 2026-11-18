@@ -2,6 +2,25 @@
 
 [返回接口目录](../README.md)
 
+<a name="dma-001"></a>
+
+## DMA-001 · tla.load_gm_to_l1
+
+[查看规格](../spec/dma.md#api-tla-load-gm-to-l1)
+
+结论：本轮 `params` 仅保留 `enable_nd2nz`，默认 True，与当前固定 ND→NZ 路径一致。False 的无转换语义尚未验证，本轮应拒绝，不能静默忽略。
+
+TODO（后续支持，不纳入本轮测试）：`l2_cache_ctrl`、`enable_dn2nz`。
+
+支持度及交付实现差异：
+
+- [TLA dma.py](https://github.com/triton-lang/triton-ascend/blob/008dff39bdcc908d6706946189b0c53c5257e4d4/third_party/ascend/language/tla/dma.py#L572) 当前固定生成 ND2NZOp，没有 `enable_nd2nz` / `enable_dn2nz`。交付实现需新增前者并检查 True；其他配置字段不再公开。
+- 现有 `enable_nz2nd` / `enable_nz2dn` 是反向转换预留名，True 会报错；不能通过改名就视为支持 DN→NZ。
+- `l2_cache_ctrl` 当前映射到 `l2_cache_mode`。NPU IR `cfe3feea3da5cbc603cb71221958cbf6e7bb9f95` 的 `bishengir/lib/Conversion/HIVMToStandard/regbase/HIVMToStandard.cpp:1038` 读取该属性，Cube ND2NZ 模板传给 DMA cache-control 字段。因此它是已有能力的交付裁剪，不是底层尚未实现。
+- [现有 nd2nz 用例](https://github.com/triton-lang/triton-ascend/blob/008dff39bdcc908d6706946189b0c53c5257e4d4/third_party/ascend/unittest/tla_ut/dma/nd2nz.py) 覆盖 cache=None/0/1/2/3，包含 IR、编译与精度检查定义；交付测试需移除 cache 参数矩阵，改为默认配置、enable_nd2nz=True 正例及 False 拒绝测试。
+- 后续 `enable_dn2nz` 需要明确转置视图、布局与后端映射，并增加精度测试；本次未确认可直接使用的同名 IR 字段。
+- 本次仅更新规格和跟踪，未执行设备验证，也未修改 TLA 或 NPU IR 实现。
+
 <a name="dma-004"></a>
 
 ## DMA-004 · tla.copy_l1_to_l0

@@ -20,7 +20,7 @@
 
 | 接口 | 状态 | 用途 | 评审 | 源码 | 设计 | 实现 |
 | --- | :---: | --- | :---: | :---: | :---: | :---: |
-| [tla.copy_ub_to_l1](spec/cube.md#api-tla-copy-ub-to-l1) | 待&#8288;转&#8288;测 | 将数据从 UB 搬到 L1，保持已有物理布局 | [1&nbsp;项&#8288;待&#8288;决](tracking/cube.md#cube-001) | [dma.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L629) | 陈&#8288;相&#8288;廷 | 姜&#8288;正/Ricky |
+| [tla.copy_ub_to_l1](spec/cube.md#api-tla-copy-ub-to-l1) | 待&#8288;转&#8288;测 | 将数据从 UB 搬到 L1，保持已有物理布局 | [本&#8288;轮&#8288;已&#8288;确&#8288;认](tracking/cube.md#cube-001) | [dma.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L629) | 陈&#8288;相&#8288;廷 | 姜&#8288;正/Ricky |
 | [tla.copy_l1_to_ub](spec/cube.md#api-tla-copy-l1-to-ub) | 待&#8288;转&#8288;测 | 将 L1 的 NZ 数据搬到 UB 并转换为 ND | 未&#8288;登&#8288;记 | [dma.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L663) | 陈&#8288;相&#8288;廷 | 姜&#8288;正/Ricky |
 | [tla.copy_l1_to_bt](spec/cube.md#api-tla-copy-l1-to-bt) | 待&#8288;转&#8288;测 | 将偏置数据从 L1 搬到 Bias Table | [1&nbsp;项&#8288;待&#8288;决](tracking/cube.md#cube-003) | [dma.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L687) | 陈&#8288;相&#8288;廷 | 姜&#8288;正/Ricky |
 | [tla.copy_l1_to_fb](spec/cube.md#api-tla-copy-l1-to-fb) | 待&#8288;转&#8288;测 | 预留的 L1 到 FixBUF 搬运入口 | [1&nbsp;项&#8288;待&#8288;决](tracking/cube.md#cube-004) | [预&#8288;留&#8288;入&#8288;口](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L714) | 陈&#8288;相&#8288;廷 | 姜&#8288;正/Ricky |
@@ -149,7 +149,7 @@
 
 | 接口 | 状态 | 用途 | 评审 | 源码 | 设计 | 实现 |
 | --- | :---: | --- | :---: | :---: | :---: | :---: |
-| [tla.load_gm_to_l1](spec/dma.md#api-tla-load-gm-to-l1) | 待&#8288;转&#8288;测 | 从 GM 加载 ND 数据到 L1 并转为 NZ | 未&#8288;登&#8288;记 | [dma.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L563) | 陈&#8288;相&#8288;廷 | 姜&#8288;正/Ricky |
+| [tla.load_gm_to_l1](spec/dma.md#api-tla-load-gm-to-l1) | 待&#8288;转&#8288;测 | 从 GM 加载 ND 数据到 L1 并转为 NZ | [本&#8288;轮&#8288;已&#8288;确&#8288;认](tracking/dma.md#dma-001) | [dma.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L563) | 陈&#8288;相&#8288;廷 | 姜&#8288;正/Ricky |
 | [tla.load_gm_to_ub](spec/dma.md#api-tla-load-gm-to-ub) | 待&#8288;转&#8288;测 | 从 GM 加载数据到 UB，可指定填充和缓存策略 | 未&#8288;登&#8288;记 | [dma.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L499) | 宋&#8288;尧&#8288;飞 | 姜&#8288;正 |
 | [tla.store_ub_to_gm](spec/dma.md#api-tla-store-ub-to-gm) | 待&#8288;转&#8288;测 | 将 UB 数据写入 GM，可指定原子模式 | 未&#8288;登&#8288;记 | [dma.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L537) | 宋&#8288;尧&#8288;飞 | 姜&#8288;正 |
 | [tla.copy_l1_to_l0](spec/dma.md#api-tla-copy-l1-to-l0) | 待&#8288;转&#8288;测 | 从 L1 向 L0A 或 L0B 搬运矩阵分块 | [3&nbsp;项&#8288;待&#8288;决](tracking/dma.md#dma-004) | [dma.py](https://github.com/triton-lang/triton-ascend/blob/074cf62907f815694a01e5cdc4ac78a90610ae82/third_party/ascend/language/tla/dma.py#L737) | Ricky | Ricky |

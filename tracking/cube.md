@@ -8,9 +8,16 @@
 
 [查看规格](../spec/cube.md#api-tla-copy-ub-to-l1)
 
-- 确认 UB→L1 是否应在前端拒绝非 None 的填充配置，并明确 Vector 写入后由 Cube 消费时的同步约定。
+结论：本轮交付移除 `params`，仅保留 `src`、`dst`；填充和维度合并不纳入本次测试。保留 Vector→Cube 的同步要求。
 
-结论：待决。
+TODO（后续支持，不阻塞本轮）：`pad_mode`、`pad_value`、`collapse_reassociation`。
+
+支持度核对：
+
+- [TLA dma.py](https://github.com/triton-lang/triton-ascend/blob/008dff39bdcc908d6706946189b0c53c5257e4d4/third_party/ascend/language/tla/dma.py#L658) 当前仍接收配置并传给 CopyOp，交付实现需同步移除该入口参数。
+- NPU IR `cfe3feea3da5cbc603cb71221958cbf6e7bb9f95` 的 `bishengir/lib/Conversion/HIVMToStandard/regbase/HIVMToStandard.cpp` 中，UB→L1 的 padding 传参开关为 `{false, false}`；不能把 IR 能携带 padding 当作目标搬运已支持。
+- `collapse_reassociation` 在 `HIVMDMAOps.cpp`、`LiftLowestStride.cpp` 有读取和维护逻辑；TLA `tla_ut/dma/copy.py` 有 attribute 检查，不等同于完整 UB→L1 功能测试。
+- 本次为源码和测试定义核对，未执行设备验证；未修改编译器或 TLA 实现仓库。
 
 <a name="cube-003"></a>
 

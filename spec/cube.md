@@ -6,7 +6,7 @@
 
 ## tla.copy_ub_to_l1
 
-签名：`tla.copy_ub_to_l1(src, dst, params=None)`
+本轮交付签名：`tla.copy_ub_to_l1(src, dst)`
 
 返回：None。
 
@@ -16,12 +16,12 @@
 | --- | --- | --- | --- | --- | --- |
 | `src` | 待搬运的源缓冲区 | tla.buffer | 地址空间：UB<br>数据类型：<br>B8：float8e4m3fn / float8e5m2 / int8 / uint8<br>B16：int16 / uint16 / float16 / bfloat16<br>B32：int32 / uint32 / float32 | 见共同约束。 | 必填 |
 | `dst` | 接收数据的目标缓冲区 | tla.buffer | 地址空间：L1<br>数据类型：与 src 相同 | 见共同约束。 | 必填 |
-| `params` | 控制搬运的配置 | tla.CopyUB2L1Params 或 None | None / tla.CopyUB2L1Params 实例 | None 创建默认配置。 | None |
-| `params.pad_mode` | 选择填充模式 | 编译期 tla.PadMode 或 None | None | CopyOp 可携带此项，当前 UB→L1 RegBase copy 模板不消费该项。 | None |
-| `params.pad_value` | 填充时写入的标量 | int / float / 标量 tl.tensor / None | None | CopyOp 可携带此项，当前 UB→L1 RegBase copy 模板不消费该项。 | None |
-| `params.collapse_reassociation` | 指定连续逻辑轴的合并关系 | 编译期 tuple[tuple[int, ...], ...] 或 None | None 或轴索引分组。索引从 0 到原秩−1 | 分组按轴序组织，覆盖参与变形的维度，不重复。 | None |
 
-共同约束：此接口在前端固定为 UB→L1，降低为 hivm.hir.copy。RegBase UB→L1 模板注册的元素类型比通用 CopyOp 窄。默认配置要求源和目的形状相容。目标末维连续，调用前应准备相容的物理布局。Vector 生产的数据跨核供 Cube 消费时需要显式同步。
+共同约束：此接口在前端固定为 UB→L1，降低为 hivm.hir.copy。RegBase UB→L1 模板注册的元素类型比通用 CopyOp 窄。本轮不提供配置参数，要求源和目的形状相容。目标末维连续，调用前应准备相容的物理布局。Vector 生产的数据跨核供 Cube 消费时需要显式同步。
+
+**本轮范围：** 不提供 `params`；填充和维度合并配置不纳入本次测试。现有源码仍有可选配置对象，交付实现需同步收敛签名。
+
+**TODO：** 后续支持 `pad_mode`、`pad_value`、`collapse_reassociation`，补齐目标约束及端到端测试；当前支持度和实现差异见 [CUBE-001](../tracking/cube.md#cube-001)。
 
 **调用示例**
 
